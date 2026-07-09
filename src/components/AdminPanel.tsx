@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
   Trash2,
   Edit,
-  Layers,
-  Globe,
   X,
   Check,
   AlertCircle,
@@ -15,7 +13,6 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { addSection, removeSection, updateSection } from "@/app/actions/sections";
 import {
@@ -26,6 +23,7 @@ import {
   reorderCommunityLink,
   type CommunityLinkInput,
 } from "@/app/actions/community";
+import { ordinal } from "@/lib/utils";
 import type {
   CommunityLink,
   LinkCategory,
@@ -41,17 +39,18 @@ interface AdminPanelProps {
 export default function AdminPanel({ sections, links }: AdminPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [tab, setTab] = useState<"sections" | "links">("sections");
 
-  // Section form state
+  const semesters = useMemo(() => {
+    const set = new Set(sections.map((s) => s.semester));
+    return [...set].sort((a, b) => a - b);
+  }, [sections]);
+  const [adminSemester, setAdminSemester] = useState<number>(semesters[0] ?? 3);
+
   const [newSectionName, setNewSectionName] = useState("");
-  const [sectionError, setSectionError] = useState("");
-  const [sectionSuccess, setSectionSuccess] = useState("");
-
-  // Section editing inline state
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
 
-  // Link modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
   const [formName, setFormName] = useState("");
@@ -62,81 +61,49 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
   const [formDescription, setFormDescription] = useState("");
   const [formError, setFormError] = useState("");
 
-  // Handler to add a new section
   const handleAddSection = (e: React.FormEvent) => {
     e.preventDefault();
-    setSectionError("");
-    setSectionSuccess("");
-    if (!newSectionName.trim()) {
-      setSectionError("Section name cannot be empty");
-      toast.error("Section name cannot be empty");
-      return;
-    }
     const name = newSectionName.trim();
-    startTransition(async () => {
-      try {
-        const result = await addSection(name);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not add section.";
-          setSectionError(errMsg);
-          toast.error(errMsg);
-          return;
-        }
-        setSectionSuccess(`Section "${name}" added successfully!`);
-        toast.success(`Section "${name}" added successfully`);
-        setNewSectionName("");
-        router.refresh();
-        setTimeout(() => setSectionSuccess(""), 3000);
-      } catch (err: any) {
-        console.error("Add section failed:", err);
-        const errMsg = err?.message || "An unexpected error occurred.";
-        setSectionError(errMsg);
-        toast.error(errMsg);
-      }
-    });
-  };
-
-  // Handler to remove an existing section
-  const handleRemoveSection = (id: number, name: string) => {
-    startTransition(async () => {
-      try {
-        const result = await removeSection(id);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not remove section.";
-          toast.error(errMsg);
-        } else {
-          toast.success("Section deleted.");
-          router.refresh();
-        }
-      } catch (err: any) {
-        console.error("Remove section failed:", err);
-        toast.error(err?.message || "An unexpected error occurred.");
-      }
-    });
-  };
-
-  // Handler to update/rename a section inline
-  const handleUpdateSection = (id: number) => {
-    if (!editingSectionName.trim()) {
+    if (!name) {
       toast.error("Section name cannot be empty");
       return;
     }
-    const name = editingSectionName.trim();
     startTransition(async () => {
-      try {
-        const result = await updateSection(id, name);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not rename section.";
-          toast.error(errMsg);
-        } else {
-          toast.success(`Renamed section to "${name}"`);
-          setEditingSectionId(null);
-          setEditingSectionName("");
-          router.refresh();
-        }
-      } catch (err: any) {
-        console.error("Update section failed:", err);
-        toast.error(err?.message || "An unexpected error occurred.");
+      const result = await addSection(name, adminSemester);
+      if (!result.ok) {
+        toast.error(result.error ?? "Could not add section.");
+        return;
+      }
+      toast.success(`Section "${name}" added.`);
+      setNewSectionName("");
+      router.refresh();
+    });
+  };
+
+  const handleRemoveSection = (id: number) => {
+    startTransition(async () => {
+      const result = await removeSection(id);
+      if (!result.ok) toast.error(result.error ?? "Could not remove section.");
+      else {
+        toast.success("Section deleted.");
+        router.refresh();
+      }
+    });
+  };
+
+  const handleUpdateSection = (id: number) => {
+    const name = editingSectionName.trim();
+    if (!name) {
+      toast.error("Section name cannot be empty");
+      return;
+    }
+    startTransition(async () => {
+      const result = await updateSection(id, name);
+      if (!result.ok) toast.error(result.error ?? "Could not rename section.");
+      else {
+        toast.success(`Renamed to "${name}"`);
+        setEditingSectionId(null);
+        router.refresh();
       }
     });
   };
@@ -168,22 +135,17 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
     setEditingLinkId(null);
   };
 
-  // Handler to save (create or update) a community link
   const handleSaveLink = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-
     if (!formName.trim()) {
       setFormError("Community name is required");
-      toast.error("Community name is required");
       return;
     }
     if (!formUrl.trim()) {
       setFormError("Invite link URL is required");
-      toast.error("Invite link URL is required");
       return;
     }
-
     const input: CommunityLinkInput = {
       name: formName,
       platform: formPlatform,
@@ -192,546 +154,444 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
       category: formCategory,
       description: formDescription,
     };
-
     startTransition(async () => {
-      try {
-        const result =
-          editingLinkId !== null
-            ? await updateCommunityLink(editingLinkId, input)
-            : await addCommunityLink(input);
-        
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not save link.";
-          setFormError(errMsg);
-          toast.error(errMsg);
-          return;
-        }
-        
-        toast.success(editingLinkId !== null ? "Link updated successfully" : "Link added successfully");
-        closeLinkModal();
-        router.refresh();
-      } catch (err: any) {
-        console.error("Save link failed:", err);
-        const errMsg = err?.message || "An unexpected error occurred.";
-        setFormError(errMsg);
-        toast.error(errMsg);
+      const result =
+        editingLinkId !== null
+          ? await updateCommunityLink(editingLinkId, input)
+          : await addCommunityLink(input);
+      if (!result.ok) {
+        setFormError(result.error ?? "Could not save link.");
+        return;
       }
+      toast.success(editingLinkId !== null ? "Link updated." : "Link added.");
+      closeLinkModal();
+      router.refresh();
     });
   };
 
-  // Handler to delete a community link
   const handleDeleteLink = (id: number) => {
     startTransition(async () => {
-      try {
-        const result = await deleteCommunityLink(id);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not delete link.";
-          toast.error(errMsg);
-        } else {
-          toast.success("Community link deleted.");
-          router.refresh();
-        }
-      } catch (err: any) {
-        console.error("Delete link failed:", err);
-        toast.error(err?.message || "An unexpected error occurred.");
+      const result = await deleteCommunityLink(id);
+      if (!result.ok) toast.error(result.error ?? "Could not delete link.");
+      else {
+        toast.success("Community link deleted.");
+        router.refresh();
       }
     });
   };
 
-  // Handler to toggle community link visibility directly from the table
-  const handleToggleLinkVisibility = (id: number, currentVisible: boolean) => {
-    const nextVisible = !currentVisible;
+  const handleToggleVisibility = (id: number, current: boolean) => {
     startTransition(async () => {
-      try {
-        const result = await toggleCommunityLinkVisibility(id, nextVisible);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not update visibility.";
-          toast.error(errMsg);
-        } else {
-          toast.success(nextVisible ? "Link is now visible" : "Link is now hidden");
-          router.refresh();
-        }
-      } catch (err: any) {
-        console.error("Toggle visibility failed:", err);
-        toast.error(err?.message || "An unexpected error occurred.");
-      }
+      const result = await toggleCommunityLinkVisibility(id, !current);
+      if (!result.ok) toast.error(result.error ?? "Could not update visibility.");
+      else router.refresh();
     });
   };
 
-  // Handler to swap display order of community links
-  const handleReorderLink = (id: number, direction: "up" | "down") => {
+  const handleReorder = (id: number, direction: "up" | "down") => {
     startTransition(async () => {
-      try {
-        const result = await reorderCommunityLink(id, direction);
-        if (!result.ok) {
-          const errMsg = result.error ?? "Could not reorder community link.";
-          toast.error(errMsg);
-        } else {
-          toast.success("Order updated.");
-          router.refresh();
-        }
-      } catch (err: any) {
-        console.error("Reorder link failed:", err);
-        toast.error(err?.message || "An unexpected error occurred.");
-      }
+      const result = await reorderCommunityLink(id, direction);
+      if (!result.ok) toast.error(result.error ?? "Could not reorder.");
+      else router.refresh();
     });
   };
+
+  const semesterSections = sections.filter((s) => s.semester === adminSemester);
 
   return (
-    <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 space-y-10">
-      {/* Title Header */}
-      <div className="border-b border-zinc-200/60 pb-6 dark:border-zinc-800/60">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
-          Admin Dashboard
-        </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1.5">
-          Manage website content. Changes are saved to the database instantly.
-        </p>
+    <main className="mx-auto w-full max-w-[1080px] flex-1 px-[22px] pb-14 pt-9">
+      <div className="flex items-center gap-2.5">
+        <span
+          className="rounded-[6px] px-[9px] py-1 font-mono text-[11px] uppercase tracking-wider"
+          style={{ background: "var(--kh-ink)", color: "var(--kh-paper)" }}
+        >
+          Admin
+        </span>
+        <span className="font-mono text-[11px] text-[var(--kh-mut)]">
+          changes go live to students instantly
+        </span>
+      </div>
+      <h1 className="mt-2.5 mb-[22px] font-serif text-[42px] font-normal tracking-tight text-[var(--kh-ink)]">
+        Manage the Hub
+      </h1>
+
+      <div className="mb-[22px] flex gap-1.5 border-b border-[var(--kh-line)]">
+        <button
+          onClick={() => setTab("sections")}
+          className="mr-4 border-b-2 bg-transparent px-1 py-[11px] text-[15px] font-bold cursor-pointer"
+          style={{
+            color: tab === "sections" ? "var(--kh-ink)" : "var(--kh-mut)",
+            borderColor: tab === "sections" ? "var(--kh-accent)" : "transparent",
+          }}
+        >
+          Sections
+        </button>
+        <button
+          onClick={() => setTab("links")}
+          className="mr-4 border-b-2 bg-transparent px-1 py-[11px] text-[15px] font-bold cursor-pointer"
+          style={{
+            color: tab === "links" ? "var(--kh-ink)" : "var(--kh-mut)",
+            borderColor: tab === "links" ? "var(--kh-accent)" : "transparent",
+          }}
+        >
+          Community links
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Section Management */}
-        <div className="lg:col-span-1 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex items-center gap-2 mb-4">
-            <Layers className="h-5 w-5 text-blue-600 dark:text-blue-500" />
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-              Section Management
-            </h2>
-          </div>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-6">
-            Create, update, or remove student sections. Updates reflect on the
-            student section grid immediately.
-          </p>
-
-          <form onSubmit={handleAddSection} className="space-y-3 mb-6">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                Section Name
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSectionName}
-                  onChange={(e) => setNewSectionName(e.target.value)}
-                  placeholder="e.g. CSE 50"
-                  disabled={isPending}
-                  className="flex-1 h-9 px-3 rounded-lg border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
-                />
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  className="h-9 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm border-0 cursor-pointer shrink-0 flex items-center gap-1"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            {sectionError && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 animate-in fade-in duration-200">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                <span>{sectionError}</span>
-              </div>
-            )}
-            {sectionSuccess && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-200">
-                <Check className="h-3.5 w-3.5 shrink-0" />
-                <span>{sectionSuccess}</span>
-              </div>
-            )}
-          </form>
-
-          <div>
-            <div className="flex justify-between items-center mb-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                Active Sections
-              </span>
-              <span className="text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-full text-zinc-500">
-                {sections.length} Total
-              </span>
-            </div>
-
-            <div className="rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 dark:border-zinc-900 dark:bg-zinc-900/10">
-              {sections.length === 0 ? (
-                <p className="text-xs text-center text-zinc-400 py-6">
-                  No active sections. Use the form above to add sections.
-                </p>
-              ) : (
-                <div className="max-h-72 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
-                  {sections.map((section) => (
-                    <div
-                      key={section.id}
-                      className="flex items-center justify-between bg-white border border-zinc-200/80 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-800 shadow-sm dark:bg-zinc-950 dark:border-zinc-900 dark:text-zinc-300 transition-colors gap-2"
-                    >
-                      {editingSectionId === section.id ? (
-                        <div className="flex items-center gap-1.5 w-full">
-                          <input
-                            type="text"
-                            value={editingSectionName}
-                            onChange={(e) => setEditingSectionName(e.target.value)}
-                            className="flex-1 h-7 px-2 rounded border border-zinc-200 bg-white text-[11px] text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
-                            placeholder="Rename..."
-                            disabled={isPending}
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleUpdateSection(section.id)}
-                            disabled={isPending}
-                            className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all cursor-pointer disabled:opacity-50"
-                            title="Save rename"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingSectionId(null);
-                              setEditingSectionName("");
-                            }}
-                            disabled={isPending}
-                            className="p-1 rounded text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
-                            title="Cancel rename"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="truncate">{section.name}</span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => {
-                                setEditingSectionId(section.id);
-                                setEditingSectionName(section.name);
-                              }}
-                              disabled={isPending}
-                              className="p-1 rounded text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
-                              title={`Rename ${section.name}`}
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleRemoveSection(section.id, section.name)
-                              }
-                              disabled={isPending}
-                              className="p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
-                              title={`Remove ${section.name}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
+      {tab === "sections" ? (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-[11px] border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] py-1 pl-3.5 pr-1">
+              <span className="font-mono text-[11px] text-[var(--kh-mut)]">SEM</span>
+              {semesters.length === 0 && (
+                <span className="rounded-lg px-3 py-[7px] font-mono text-xs text-[var(--kh-mut)]">
+                  none yet
+                </span>
               )}
+              {semesters.map((sem) => (
+                <button
+                  key={sem}
+                  onClick={() => setAdminSemester(sem)}
+                  className="rounded-lg px-3 py-[7px] text-[13px] font-bold cursor-pointer"
+                  style={
+                    adminSemester === sem
+                      ? { background: "var(--kh-ink)", color: "var(--kh-paper)" }
+                      : { background: "transparent", color: "var(--kh-ink2)" }
+                  }
+                >
+                  {ordinal(sem)}
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
 
-        {/* Community Links Management */}
-        <div className="lg:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-600 dark:text-blue-500" />
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                Community Links
-              </h2>
-            </div>
-            <Button
+            <form onSubmit={handleAddSection} className="flex min-w-[240px] flex-1 gap-2">
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={adminSemester}
+                onChange={(e) => setAdminSemester(Number(e.target.value) || 1)}
+                title="Semester for the new section"
+                className="w-[70px] rounded-[11px] border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] px-2.5 py-[11px] text-sm font-semibold text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
+              />
+              <input
+                type="text"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                placeholder="New section — e.g. CSE 31"
+                disabled={isPending}
+                className="flex-1 rounded-[11px] border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] px-3.5 py-[11px] text-sm font-medium text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
+              />
+              <button
+                type="submit"
+                disabled={isPending}
+                className="whitespace-nowrap rounded-[11px] px-[18px] text-sm font-bold text-white shadow-[0_3px_0_var(--kh-accent-d)] cursor-pointer disabled:opacity-60"
+                style={{ background: "var(--kh-accent)" }}
+              >
+                + Add
+              </button>
+            </form>
+          </div>
+
+          <div
+            className="grid gap-[9px]"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}
+          >
+            {semesterSections.length === 0 ? (
+              <p className="col-span-full py-6 text-center text-xs text-[var(--kh-mut)]">
+                No sections in {ordinal(adminSemester)} semester yet.
+              </p>
+            ) : (
+              semesterSections.map((section) => (
+                <div
+                  key={section.id}
+                  className="flex items-center gap-2 rounded-[11px] border-[1.5px] border-[var(--kh-line)] bg-[var(--kh-card)] px-[13px] py-[11px]"
+                >
+                  {editingSectionId === section.id ? (
+                    <div className="flex w-full items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={editingSectionName}
+                        onChange={(e) => setEditingSectionName(e.target.value)}
+                        className="h-7 flex-1 rounded border border-[var(--kh-line2)] bg-[var(--kh-paper)] px-2 text-[11px] text-[var(--kh-ink)] outline-none"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleUpdateSection(section.id)}
+                        className="rounded p-1 text-[var(--kh-have)] cursor-pointer"
+                        title="Save"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditingSectionId(null)}
+                        className="rounded p-1 text-[var(--kh-mut)] cursor-pointer"
+                        title="Cancel"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="flex-1 truncate text-[15px] font-bold text-[var(--kh-ink)]">
+                        {section.name}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingSectionId(section.id);
+                          setEditingSectionName(section.name);
+                        }}
+                        className="rounded p-1 text-[var(--kh-mut)] hover:text-[var(--kh-accent)] cursor-pointer"
+                        title={`Rename ${section.name}`}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveSection(section.id)}
+                        className="rounded p-1 text-[var(--kh-mut)] hover:text-[var(--kh-accent)] cursor-pointer"
+                        title={`Remove ${section.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mb-3.5 flex justify-end">
+            <button
               onClick={() => openLinkModal()}
-              className="h-9 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm border-0 cursor-pointer flex items-center gap-1.5"
+              className="flex items-center gap-1.5 rounded-[11px] px-[18px] py-[11px] text-sm font-bold text-white shadow-[0_3px_0_var(--kh-accent-d)] cursor-pointer"
+              style={{ background: "var(--kh-accent)" }}
             >
               <Plus className="h-4 w-4" />
-              Add Community Link
-            </Button>
+              Add community
+            </button>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/20 dark:bg-transparent">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/50 dark:border-zinc-900 dark:bg-zinc-900/30">
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 w-[100px] text-center">Order</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Name</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Platform</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Category</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">URL</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 text-center">Visible</th>
-                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
-                {links.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-xs text-zinc-400">
-                      No community links configured. Click &ldquo;Add Community
-                      Link&rdquo; to create one.
-                    </td>
-                  </tr>
-                ) : (
-                  links.map((link, index) => (
-                    <tr
-                      key={link.id}
-                      className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10 transition-colors"
+          <div className="flex flex-col gap-2.5">
+            {links.length === 0 ? (
+              <p className="py-8 text-center text-xs text-[var(--kh-mut)]">
+                No community links configured. Click &ldquo;Add community&rdquo; to
+                create one.
+              </p>
+            ) : (
+              links.map((link, index) => (
+                <div
+                  key={link.id}
+                  className="flex items-center gap-3 rounded-[13px] border-[1.5px] border-[var(--kh-line)] bg-[var(--kh-card)] px-3.5 py-3"
+                  style={{ opacity: link.visible ? 1 : 0.55 }}
+                >
+                  <div
+                    className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] font-mono text-xs font-extrabold text-white"
+                    style={{
+                      background:
+                        link.platform === "WhatsApp" ? "var(--kh-wa)" : "var(--kh-dc)",
+                    }}
+                  >
+                    {link.platform === "WhatsApp" ? "WA" : "DC"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[15px] font-bold text-[var(--kh-ink)]">
+                      {link.name}
+                    </div>
+                    <div className="font-mono text-[10.5px] uppercase tracking-wider text-[var(--kh-mut)]">
+                      {link.platform} · {link.category}
+                    </div>
+                  </div>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden max-w-[140px] items-center gap-1 truncate text-xs text-[var(--kh-mut)] hover:text-[var(--kh-accent)] sm:flex"
+                  >
+                    <span className="truncate">{link.url}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleReorder(link.id, "up")}
+                      disabled={isPending || index === 0}
+                      className="rounded-lg border border-[var(--kh-line2)] p-1.5 text-[var(--kh-ink2)] cursor-pointer disabled:opacity-20"
+                      title="Move up"
                     >
-                      <td className="px-4 py-3.5 text-center border-b-0 w-[100px]">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleReorderLink(link.id, "up")}
-                            disabled={isPending || index === 0}
-                            className="p-1.5 rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-500 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                            title="Move Up"
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReorderLink(link.id, "down")}
-                            disabled={isPending || index === links.length - 1}
-                            className="p-1.5 rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-500 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                            title="Move Down"
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs font-semibold text-zinc-900 dark:text-zinc-200 border-b-0">
-                        {link.name}
-                      </td>
-                      <td className="px-4 py-3.5 border-b-0">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            link.platform === "WhatsApp"
-                              ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-                              : "bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-950/20 dark:border-blue-900/30 dark:text-blue-400"
-                          }`}
-                        >
-                          {link.platform}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 border-b-0">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            link.category === "Section Swap"
-                              ? "bg-purple-50 border-purple-100 text-purple-700 dark:bg-purple-950/20 dark:border-purple-900/30 dark:text-purple-400"
-                              : "bg-zinc-100 border-zinc-200 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400"
-                          }`}
-                        >
-                          {link.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate border-b-0">
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          <span className="truncate">{link.url}</span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      </td>
-                      <td className="px-4 py-3.5 text-center border-b-0">
-                        <button
-                          onClick={() => handleToggleLinkVisibility(link.id, link.visible)}
-                          disabled={isPending}
-                          className="inline-flex items-center text-xs font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer bg-transparent border-0 disabled:opacity-50"
-                          title={`Toggle visibility to ${link.visible ? "hidden" : "visible"}`}
-                        >
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full border ${
-                              link.visible
-                                ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-                                : "bg-zinc-50 border-zinc-100 text-zinc-500 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-400"
-                            }`}
-                          >
-                            {link.visible ? "Visible" : "Hidden"}
-                          </span>
-                        </button>
-                      </td>
-                      <td className="px-4 py-3.5 text-right border-b-0">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => openLinkModal(link)}
-                            disabled={isPending}
-                            className="p-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-900 transition-colors text-zinc-500 cursor-pointer disabled:opacity-50"
-                            title="Edit link"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLink(link.id)}
-                            disabled={isPending}
-                            className="p-1.5 rounded-lg border border-red-200/80 hover:bg-red-50 hover:text-red-600 dark:border-red-950/40 dark:hover:bg-red-950/20 dark:hover:text-red-400 transition-colors text-red-500 cursor-pointer disabled:opacity-50"
-                            title="Delete link"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleReorder(link.id, "down")}
+                      disabled={isPending || index === links.length - 1}
+                      className="rounded-lg border border-[var(--kh-line2)] p-1.5 text-[var(--kh-ink2)] cursor-pointer disabled:opacity-20"
+                      title="Move down"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleToggleVisibility(link.id, link.visible)}
+                    className="whitespace-nowrap rounded-[9px] px-3 py-[7px] text-xs font-bold cursor-pointer"
+                    style={
+                      link.visible
+                        ? { background: "var(--kh-have-bg)", color: "var(--kh-have)", border: "1px solid var(--kh-have-line)" }
+                        : { color: "var(--kh-mut)", border: "1px solid var(--kh-line2)" }
+                    }
+                  >
+                    {link.visible ? "👁 Visible" : "🚫 Hidden"}
+                  </button>
+                  <button
+                    onClick={() => openLinkModal(link)}
+                    className="rounded-lg border border-[var(--kh-line2)] p-1.5 text-[var(--kh-ink2)] cursor-pointer"
+                    title="Edit"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLink(link.id)}
+                    className="rounded-lg border border-[var(--kh-line2)] p-1.5 text-[var(--kh-accent)] cursor-pointer"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* Add / Edit Link Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm transition-opacity duration-300">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(44,40,34,.4)] p-4 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={closeLinkModal} />
-
           <form
             onSubmit={handleSaveLink}
-            className="relative w-full max-w-md transform rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl transition-all dark:border-zinc-800 dark:bg-zinc-950 animate-in fade-in zoom-in-95 duration-200 space-y-5"
+            className="relative w-full max-w-md space-y-5 rounded-2xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-900">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                {editingLinkId !== null ? "Edit Community Link" : "Add Community Link"}
+            <div className="flex items-center justify-between border-b border-[var(--kh-line)] pb-3">
+              <h3 className="font-serif text-2xl text-[var(--kh-ink)]">
+                {editingLinkId !== null ? "Edit community link" : "Add community link"}
               </h3>
               <button
                 type="button"
                 onClick={closeLinkModal}
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors dark:hover:bg-zinc-900 dark:hover:text-zinc-200 cursor-pointer"
+                className="rounded-lg p-1.5 text-[var(--kh-mut)] hover:text-[var(--kh-ink)] cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {formError && (
-              <div className="flex items-center gap-1.5 py-2 px-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400 animate-in fade-in duration-200">
+              <div className="flex items-center gap-1.5 rounded-xl border border-[var(--kh-need-line)] bg-[var(--kh-need-bg)] px-3 py-2 text-xs text-[var(--kh-need)]">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Community Name
-                </label>
+              <Field label="Community name">
                 <input
                   type="text"
                   value={formName}
-                  onChange={(e) => {
-                    setFormName(e.target.value);
-                    if (formError) setFormError("");
-                  }}
-                  disabled={isPending}
+                  onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g. KIIT Hub Discord Community"
-                  className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
+                  className="w-full rounded-xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-paper)] px-3 py-2.5 text-sm text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
                 />
-              </div>
+              </Field>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                    Platform
-                  </label>
+                <Field label="Platform">
                   <select
                     value={formPlatform}
                     onChange={(e) => setFormPlatform(e.target.value as Platform)}
-                    disabled={isPending}
-                    className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
+                    className="w-full rounded-xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-paper)] px-3 py-2.5 text-sm text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
                   >
                     <option value="WhatsApp">WhatsApp</option>
                     <option value="Discord">Discord</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                    Category
-                  </label>
+                </Field>
+                <Field label="Category">
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as LinkCategory)}
-                    disabled={isPending}
-                    className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
+                    className="w-full rounded-xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-paper)] px-3 py-2.5 text-sm text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
                   >
                     <option value="General">General</option>
                     <option value="Section Swap">Section Swap</option>
                   </select>
-                </div>
+                </Field>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Visible
+              <Field label="Visible">
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={formVisible}
+                    onChange={(e) => setFormVisible(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div
+                    className="h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"
+                    style={{ background: formVisible ? "var(--kh-accent)" : "var(--kh-line2)" }}
+                  />
+                  <span className="ml-2 text-xs font-medium text-[var(--kh-ink2)]">
+                    {formVisible ? "Visible" : "Hidden"}
+                  </span>
                 </label>
-                <div className="flex h-10 items-center">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formVisible}
-                      onChange={(e) => setFormVisible(e.target.checked)}
-                      disabled={isPending}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-blue-600" />
-                    <span className="ml-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                      {formVisible ? "Visible" : "Hidden"}
-                    </span>
-                  </label>
-                </div>
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Invite Link URL
-                </label>
+              <Field label="Invite link URL">
                 <input
                   type="text"
                   value={formUrl}
-                  onChange={(e) => {
-                    setFormUrl(e.target.value);
-                    if (formError) setFormError("");
-                  }}
-                  disabled={isPending}
+                  onChange={(e) => setFormUrl(e.target.value)}
                   placeholder="https://chat.whatsapp.com/... or https://discord.gg/..."
-                  className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
+                  className="w-full rounded-xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-paper)] px-3 py-2.5 text-sm text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Description (Optional)
-                </label>
+              <Field label="Description (optional)">
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  disabled={isPending}
-                  placeholder="A short description of this community..."
-                  className="w-full h-20 p-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200 resize-none"
+                  placeholder="A short description of this community…"
+                  className="h-20 w-full resize-none rounded-xl border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-paper)] p-3 text-sm text-[var(--kh-ink)] outline-none focus:border-[var(--kh-accent)]"
                 />
-              </div>
+              </Field>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-900">
+            <div className="flex justify-end gap-2 border-t border-[var(--kh-line)] pt-3">
               <button
                 type="button"
                 onClick={closeLinkModal}
-                disabled={isPending}
-                className="h-9 px-4 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-semibold text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 cursor-pointer disabled:opacity-50"
+                className="rounded-xl border-[1.5px] border-[var(--kh-line2)] px-4 py-2.5 text-xs font-semibold text-[var(--kh-ink2)] cursor-pointer"
               >
                 Cancel
               </button>
-              <Button
+              <button
                 type="submit"
                 disabled={isPending}
-                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm border-0 cursor-pointer flex items-center justify-center"
+                className="rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-[0_3px_0_var(--kh-accent-d)] cursor-pointer disabled:opacity-60"
+                style={{ background: "var(--kh-accent)" }}
               >
-                {isPending ? "Saving..." : "Save Link"}
-              </Button>
+                {isPending ? "Saving…" : "Save link"}
+              </button>
             </div>
           </form>
         </div>
       )}
     </main>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--kh-mut)]">
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
