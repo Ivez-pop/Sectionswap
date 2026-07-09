@@ -14,6 +14,10 @@ interface AppContextType {
   deleteCommunityLink: (id: number) => void;
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
+  userPreferences: Record<string, "have" | "need" | null>;
+  submitPreference: (sectionName: string, preference: "have" | "need" | null) => void;
+  getUserHaveCount: () => number;
+  canSubmitHave: (sectionName: string) => boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -63,6 +67,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCommunityLinks((prev) => prev.filter((link) => link.id !== id));
   };
 
+  const [userPreferences, setUserPreferences] = useState<Record<string, "have" | "need" | null>>({});
+
+  const submitPreference = (sectionName: string, preference: "have" | "need" | null) => {
+    setUserPreferences((prev) => ({
+      ...prev,
+      [sectionName]: preference,
+    }));
+  };
+
+  const getUserHaveCount = (): number => {
+    return Object.values(userPreferences).filter((p) => p === "have").length;
+  };
+
+  const canSubmitHave = (sectionName: string): boolean => {
+    if (userPreferences[sectionName] === "have") {
+      return true;
+    }
+    return getUserHaveCount() < 2;
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -75,6 +99,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteCommunityLink,
         isAdmin,
         setIsAdmin,
+        userPreferences,
+        submitPreference,
+        getUserHaveCount,
+        canSubmitHave,
       }}
     >
       {children}

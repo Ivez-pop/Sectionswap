@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GraduationCap, User } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/context/AppContext";
+import SocializBadge from "@/components/SocializBadge";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -22,12 +23,12 @@ export default function Navbar() {
             <GraduationCap className="h-5.5 w-5.5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 leading-none mb-1">
+            <span className="text-sm font-extrabold leading-tight text-zinc-900 dark:text-zinc-50">
               KIIT Hub Community
             </span>
-            <span className="text-base font-extrabold leading-none text-zinc-900 dark:text-zinc-50">
-              Section Swap
-            </span>
+            <div className="mt-1 flex">
+              <SocializBadge size="xs" />
+            </div>
           </div>
         </Link>
 

@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import CommunityCard from "@/components/CommunityCard";
 import { useApp } from "@/context/AppContext";
 import { Search } from "lucide-react";
+import SocializBadge from "@/components/SocializBadge";
 
 export default function Home() {
   const { communityLinks } = useApp();
@@ -26,11 +27,16 @@ export default function Home() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 md:py-20 flex flex-col justify-start">
         {/* Banner Hero Title */}
-        <div className="text-center max-w-2xl mx-auto space-y-4 mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
-            KIIT Hub Communities
-          </h1>
-          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed">
+        <div className="text-center max-w-2xl mx-auto space-y-3.5 mb-12">
+          <div className="space-y-1">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+              KIIT Hub Community
+            </h1>
+            <div className="flex justify-center pt-2">
+              <SocializBadge size="sm" />
+            </div>
+          </div>
+          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed pt-2">
             Find and join your favorite interest groups at KIIT. Connect directly with students sharing similar passions.
           </p>
 
@@ -74,7 +80,12 @@ export default function Home() {
       {/* Premium minimal footer */}
       <footer className="w-full border-t border-zinc-200/50 py-8 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400 dark:text-zinc-500">
-          <p>© {new Date().getFullYear()} KIIT Hub Community. All rights reserved.</p>
+          <div className="flex flex-col sm:items-start items-center gap-0.5">
+            <p>© {new Date().getFullYear()} KIIT Hub Community. All rights reserved.</p>
+            <div className="mt-1 flex">
+              <SocializBadge size="xs" />
+            </div>
+          </div>
           <div className="flex gap-4">
             <span className="hover:text-zinc-600 dark:hover:text-zinc-400 cursor-pointer transition-colors duration-200">
               Community Guidelines

@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SocializBadge from "@/components/SocializBadge";
 
 export default function Hero() {
   return (
@@ -11,11 +12,14 @@ export default function Hero() {
       
       <div className="mx-auto flex max-w-4xl flex-col items-center text-center px-6">
         {/* Title Stack */}
-        <h1 className="flex flex-col gap-2 md:gap-3">
-          <span className="text-sm md:text-base font-semibold tracking-wider text-blue-600 dark:text-blue-500 uppercase">
+        <h1 className="flex flex-col gap-1.5 md:gap-2">
+          <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 leading-[1.1]">
             KIIT Hub Community
           </span>
-          <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 leading-[1.1]">
+          <div className="flex justify-center mt-2.5 mb-1.5">
+            <SocializBadge size="sm" />
+          </div>
+          <span className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-blue-600 dark:text-blue-500 mt-2 sm:mt-3">
             Section Swap
           </span>
         </h1>
