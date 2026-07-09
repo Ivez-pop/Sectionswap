@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { GraduationCap, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useApp } from "@/context/AppContext";
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const { isAdmin } = useApp();
+
+  const isHomeActive = pathname === "/";
+  const isSectionSwapActive = pathname === "/section-swap";
+  const isAdminActive = pathname === "/admin";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200/80 bg-white/70 backdrop-blur-md dark:border-zinc-800/80 dark:bg-black/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
@@ -26,17 +35,45 @@ export default function Navbar() {
         <nav className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/"
-            className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors duration-200 dark:text-zinc-400 dark:hover:text-zinc-50"
+            className={`relative text-sm font-semibold transition-colors duration-200 ${
+              isHomeActive
+                ? "text-blue-600 dark:text-blue-500"
+                : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            }`}
           >
             Home
+            {isHomeActive && (
+              <span className="absolute -bottom-[21px] left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
+            )}
           </Link>
           <Link
-            href="/"
-            className="relative text-sm font-semibold text-blue-600 transition-colors duration-200 dark:text-blue-500"
+            href="/section-swap"
+            className={`relative text-sm font-semibold transition-colors duration-200 ${
+              isSectionSwapActive
+                ? "text-blue-600 dark:text-blue-500"
+                : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            }`}
           >
             Section Swap
-            <span className="absolute -bottom-[21px] left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
+            {isSectionSwapActive && (
+              <span className="absolute -bottom-[21px] left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
+            )}
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`relative text-sm font-semibold transition-colors duration-200 ${
+                isAdminActive
+                  ? "text-blue-600 dark:text-blue-500"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+              }`}
+            >
+              Admin
+              {isAdminActive && (
+                <span className="absolute -bottom-[21px] left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
+              )}
+            </Link>
+          )}
         </nav>
 
         {/* Right Side Profile Avatar */}

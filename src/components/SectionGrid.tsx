@@ -1,25 +1,22 @@
 "use client";
 
 import SectionCard from "./SectionCard";
-
-interface Section {
-  id: number;
-  name: string;
-}
+import { useApp } from "@/context/AppContext";
 
 interface SectionGridProps {
   searchQuery?: string;
   onViewPeople: (sectionName: string) => void;
 }
 
-// Generate the 49 sections dynamically as required
-const sections: Section[] = Array.from({ length: 49 }, (_, i) => ({
-  id: i + 1,
-  name: `CSE ${i + 1}`,
-}));
-
 export default function SectionGrid({ searchQuery = "", onViewPeople }: SectionGridProps) {
-  const filteredSections = sections.filter((section) =>
+  const { sections } = useApp();
+
+  const mappedSections = sections.map((name, index) => ({
+    id: index + 1,
+    name,
+  }));
+
+  const filteredSections = mappedSections.filter((section) =>
     section.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
 
