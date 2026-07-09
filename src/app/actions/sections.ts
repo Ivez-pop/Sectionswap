@@ -19,21 +19,26 @@ function deriveSortOrder(name: string): number | null {
   return match ? Number.parseInt(match[1], 10) : null;
 }
 
-export async function addSection(name: string): Promise<ActionResult> {
+export async function addSection(
+  name: string,
+  semester: number,
+): Promise<ActionResult> {
   const denied = await assertAdmin();
   if (denied) return denied;
 
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "Section name cannot be empty." };
+  if (!Number.isInteger(semester) || semester < 1 || semester > 12)
+    return { ok: false, error: "Semester must be a number between 1 and 12." };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("sections")
-    .insert({ name: trimmed, sort_order: deriveSortOrder(trimmed) });
+    .insert({ name: trimmed, sort_order: deriveSortOrder(trimmed), semester });
 
   if (error) {
     if (error.code === "23505")
-      return { ok: false, error: "Section already exists." };
+      return { ok: false, error: "That section already exists for this semester." };
     return { ok: false, error: error.message };
   }
 

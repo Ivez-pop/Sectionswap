@@ -9,7 +9,8 @@ export default async function NavbarServer() {
       isAdmin={profile?.is_admin ?? false}
       fullName={profile?.full_name ?? null}
       email={profile?.email ?? null}
-      avatarUrl={profile?.avatar_url ?? null}
+      whatsappNumber={profile?.whatsapp_number ?? null}
+      discordHandle={profile?.discord_handle ?? null}
     />
   );
 }

@@ -28,7 +28,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, email, full_name, avatar_url, is_admin")
+    .select("id, email, full_name, avatar_url, is_admin, whatsapp_number, discord_handle")
     .eq("id", user.id)
     .single();
 

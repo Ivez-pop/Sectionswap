@@ -1,31 +1,35 @@
-import CommunityDirectory from "@/components/CommunityDirectory";
-import SocializBadge from "@/components/SocializBadge";
+import HomeDirectory from "@/components/HomeDirectory";
 import SiteFooter from "@/components/SiteFooter";
 import { getVisibleCommunities } from "@/lib/data/queries";
 
 export default async function Home() {
-  const communities = await getVisibleCommunities("General");
+  const communities = await getVisibleCommunities();
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-50/40 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 transition-colors duration-300">
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 md:py-20 flex flex-col justify-start">
-        {/* Banner Hero Title */}
-        <div className="text-center max-w-2xl mx-auto space-y-3.5 mb-4">
-          <div className="space-y-1">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
-              KIIT Hub Community
-            </h1>
-            <div className="flex justify-center pt-2">
-              <SocializBadge size="sm" />
+    <div className="flex min-h-screen flex-col">
+      <main className="mx-auto w-full max-w-[1080px] flex-1 px-[22px]">
+        <div className="py-10 md:pb-14">
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            <div className="max-w-[560px]">
+              <div className="font-mono text-xs uppercase tracking-[.14em] text-[var(--kh-accent)]">
+                The Directory
+              </div>
+              <h1 className="mt-2 font-serif text-[52px] font-normal leading-[1.02] tracking-tight text-[var(--kh-ink)]">
+                Find your people.
+              </h1>
+              <p className="mt-3 text-base leading-relaxed text-[var(--kh-ink2)]">
+                Every KIIT group worth joining, in one place — coding grinds,
+                film nights, gaming squads, and the all-important
+                section-swap crew.
+              </p>
+            </div>
+            <div className="whitespace-nowrap pb-1.5 font-mono text-[13px] text-[var(--kh-mut)]">
+              {communities.length} communities
             </div>
           </div>
-          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed pt-2">
-            Find and join your favorite interest groups at KIIT. Connect directly
-            with students sharing similar passions.
-          </p>
-        </div>
 
-        <CommunityDirectory communities={communities} />
+          <HomeDirectory communities={communities} />
+        </div>
       </main>
 
       <SiteFooter />

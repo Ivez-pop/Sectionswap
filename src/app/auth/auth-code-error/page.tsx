@@ -1,28 +1,37 @@
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { ALLOWED_EMAIL_DOMAIN } from "@/lib/auth/kiit";
 
 export const metadata = {
-  title: "Sign-in error — KIIT Hub Community",
+  title: "Sign-in error — KIIT Hub",
 };
 
 export default function AuthCodeErrorPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50/40 px-6 text-center dark:bg-zinc-950">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400">
-        <AlertCircle className="h-6 w-6" />
+    <div
+      className="kh-grain flex min-h-screen items-center justify-center p-8"
+      style={{
+        background:
+          "linear-gradient(160deg, var(--kh-paper), var(--kh-paper2))",
+      }}
+    >
+      <div className="w-full max-w-[440px] rounded-[20px] border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] p-[40px_34px] text-center shadow-[0_18px_44px_rgba(44,40,34,.14)] animate-in fade-in duration-500">
+        <div className="text-[46px]">🚧</div>
+        <div className="mt-3 font-serif text-[32px] leading-[1.1] text-[var(--kh-ink)]">
+          That&rsquo;s not a KIIT email
+        </div>
+        <div className="mt-3 text-[15px] leading-[1.55] text-[var(--kh-ink2)]">
+          This clubhouse is KIIT-only. Sign in with your{" "}
+          <b className="text-[var(--kh-accent)]">@{ALLOWED_EMAIL_DOMAIN}</b>{" "}
+          address and we&rsquo;ll wave you right through — promise it&rsquo;s
+          the friendliest bouncer on campus.
+        </div>
+        <Link
+          href="/login"
+          className="mt-[26px] inline-flex items-center rounded-xl bg-[var(--kh-accent)] px-[22px] py-[13px] text-[15px] font-bold text-white shadow-[0_3px_0_var(--kh-accent-d)] transition-transform hover:-translate-y-px"
+        >
+          ← Back to login
+        </Link>
       </div>
-      <h1 className="mt-5 text-xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-        Could not complete sign-in
-      </h1>
-      <p className="mt-2 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
-        The sign-in link was invalid or expired. Please try signing in again.
-      </p>
-      <Link
-        href="/login"
-        className="mt-6 inline-flex h-10 items-center rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
-      >
-        Back to sign in
-      </Link>
     </div>
   );
 }

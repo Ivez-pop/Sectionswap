@@ -1,20 +1,29 @@
 import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Instrument_Serif, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { Loader2 } from "lucide-react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import NavbarServer from "@/components/NavbarServer";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -25,7 +34,7 @@ export const metadata: Metadata = {
 /** Skeleton shown while the auth-backed NavbarServer streams in. */
 function NavSkeleton() {
   return (
-    <div className="h-16 border-b border-zinc-200/80 bg-white/70 backdrop-blur-md dark:border-zinc-800/80 dark:bg-black/70" />
+    <div className="h-[60px] border-b border-[var(--kh-line)] bg-[color-mix(in_srgb,var(--kh-paper)_82%,transparent)] backdrop-blur-md" />
   );
 }
 
@@ -33,7 +42,7 @@ function NavSkeleton() {
 function PageFallback() {
   return (
     <div className="flex flex-1 items-center justify-center py-24">
-      <Loader2 className="h-5 w-5 animate-spin text-zinc-300 dark:text-zinc-600" />
+      <Loader2 className="h-5 w-5 animate-spin text-[var(--kh-mut)]" />
     </div>
   );
 }
@@ -46,10 +55,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${instrumentSerif.variable} ${hankenGrotesk.variable} ${spaceMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-zinc-50/40 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 transition-colors duration-300">
+      <body className="min-h-full flex flex-col bg-[var(--kh-paper)] text-[var(--kh-ink)] transition-colors duration-300">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
