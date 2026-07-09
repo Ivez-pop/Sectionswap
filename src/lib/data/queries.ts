@@ -14,7 +14,8 @@ export async function getSections(): Promise<Section[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sections")
-    .select("id, name, sort_order")
+    .select("id, name, sort_order, semester")
+    .order("semester", { ascending: true })
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
 
@@ -34,15 +35,15 @@ export async function getCommunityLinks(): Promise<CommunityLink[]> {
 }
 
 export async function getVisibleCommunities(
-  category: LinkCategory,
+  category?: LinkCategory,
 ): Promise<CommunityLink[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("community_links")
     .select("id, name, platform, url, visible, category, description, display_order")
-    .eq("visible", true)
-    .eq("category", category)
-    .order("display_order", { ascending: true });
+    .eq("visible", true);
+  if (category) query = query.eq("category", category);
+  const { data, error } = await query.order("display_order", { ascending: true });
 
   if (error) throw error;
   return (data as CommunityLink[]) ?? [];
@@ -68,14 +69,37 @@ export async function getMyPreferences(): Promise<Record<number, Preference>> {
   return map;
 }
 
-/** Students who have / need a given section (People modal). */
+/** Map of section_id -> { have, need } response counts, for the tile grid. */
+export async function getPreferenceCounts(): Promise<
+  Record<number, { have: number; need: number }>
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("swap_preferences")
+    .select("section_id, preference");
+
+  if (error) throw error;
+
+  const map: Record<number, { have: number; need: number }> = {};
+  for (const row of data ?? []) {
+    const id = row.section_id as number;
+    if (!map[id]) map[id] = { have: 0, need: 0 };
+    if (row.preference === "have") map[id].have += 1;
+    else if (row.preference === "need") map[id].need += 1;
+  }
+  return map;
+}
+
+/** Students who have / need a given section (detail drawer). */
 export async function getPeopleForSection(
   sectionId: number,
 ): Promise<SectionPeople> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("swap_preferences")
-    .select("preference, profile:profiles(id, full_name, email)")
+    .select(
+      "preference, profile:profiles(id, full_name, email, whatsapp_number, discord_handle)",
+    )
     .eq("section_id", sectionId);
 
   if (error) throw error;
@@ -86,6 +110,8 @@ export async function getPeopleForSection(
       id: string;
       full_name: string | null;
       email: string;
+      whatsapp_number: string | null;
+      discord_handle: string | null;
     } | null;
     if (!profile) continue;
     if (row.preference === "have") result.have.push(profile);

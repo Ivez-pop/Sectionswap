@@ -8,12 +8,15 @@ export interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   is_admin: boolean;
+  whatsapp_number: string | null;
+  discord_handle: string | null;
 }
 
 export interface Section {
   id: number;
   name: string;
   sort_order: number | null;
+  semester: number;
 }
 
 export interface CommunityLink {
@@ -31,6 +34,8 @@ export interface Person {
   id: string;
   full_name: string | null;
   email: string;
+  whatsapp_number: string | null;
+  discord_handle: string | null;
 }
 
 export interface SectionPeople {
