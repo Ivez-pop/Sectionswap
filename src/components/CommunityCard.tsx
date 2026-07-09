@@ -1,8 +1,9 @@
 "use client";
 
-import { ExternalLink, Code, Tv, Film, Gamepad2, Lightbulb, Camera, Trophy, Music, Users } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import PlatformIcon from "@/components/PlatformIcon";
 
 interface CommunityCardProps {
   name: string;
@@ -10,25 +11,6 @@ interface CommunityCardProps {
   description?: string;
   url: string;
 }
-
-// Icon router based on community name
-const resolveIcon = (name: string) => {
-  const n = name.toLowerCase();
-  if (n.includes("code") || n.includes("coding") || n.includes("dev")) return Code;
-  if (n.includes("anime") || n.includes("manga")) return Tv;
-  if (n.includes("cine") || n.includes("movie") || n.includes("film")) return Film;
-  if (n.includes("game") || n.includes("gaming")) return Gamepad2;
-  if (n.includes("start") || n.includes("incub") || n.includes("idea") || n.includes("biz")) return Lightbulb;
-  if (n.includes("photo") || n.includes("camera") || n.includes("lens")) return Camera;
-  if (n.includes("music") || n.includes("song") || n.includes("club") || n.includes("beat")) return Music;
-  if (n.includes("sport") || n.includes("game") || n.includes("play") || n.includes("fit") || n.includes("athlet")) return Trophy;
-  return Users;
-};
-
-const renderCommunityIcon = (name: string, className: string) => {
-  const Icon = resolveIcon(name);
-  return <Icon className={className} />;
-};
 
 export default function CommunityCard({ name, platform, description, url }: CommunityCardProps) {
   const isWhatsApp = platform === "WhatsApp";
@@ -38,9 +20,7 @@ export default function CommunityCard({ name, platform, description, url }: Comm
       <div>
         {/* Card Top Title & Platform Badge */}
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 group-hover:bg-blue-50 group-hover:text-blue-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:group-hover:bg-blue-950/50 dark:group-hover:text-blue-400 transition-colors duration-300">
-            {renderCommunityIcon(name, "h-5 w-5")}
-          </div>
+          <PlatformIcon platform={platform} />
           
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border ${
             isWhatsApp

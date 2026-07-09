@@ -1,4 +1,3 @@
-import NavbarServer from "@/components/NavbarServer";
 import CommunityDirectory from "@/components/CommunityDirectory";
 import SocializBadge from "@/components/SocializBadge";
 import SiteFooter from "@/components/SiteFooter";
@@ -9,8 +8,6 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50/40 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 transition-colors duration-300">
-      <NavbarServer />
-
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 md:py-20 flex flex-col justify-start">
         {/* Banner Hero Title */}
         <div className="text-center max-w-2xl mx-auto space-y-3.5 mb-4">

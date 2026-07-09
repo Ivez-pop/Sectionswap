@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { GraduationCap, LogOut, User } from "lucide-react";
+import Image from "next/image";
+import { LogOut, User, Sun, Moon } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import SocializBadge from "@/components/SocializBadge";
 import { signOut } from "@/app/actions/auth";
 
@@ -20,6 +23,13 @@ export default function Navbar({
   avatarUrl,
 }: NavbarProps) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const links = [
     { href: "/", label: "Home" },
@@ -32,9 +42,15 @@ export default function Navbar({
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Left Side Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 transition-all duration-300 group-hover:scale-105 group-hover:bg-blue-700">
-            <GraduationCap className="h-5.5 w-5.5" />
-          </div>
+          <Image
+            src="/logo/logo.jpeg"
+            alt="KIIT Hub Community Logo"
+            width={48}
+            height={48}
+            priority
+            quality={100}
+            className="h-12 w-12 shrink-0 rounded-xl object-contain transition-transform duration-300 group-hover:scale-105"
+          />
           <div className="flex flex-col">
             <span className="text-sm font-extrabold leading-tight text-zinc-900 dark:text-zinc-50">
               KIIT Hub Community
@@ -68,8 +84,23 @@ export default function Navbar({
           })}
         </nav>
 
-        {/* Right Side: profile + sign out */}
+        {/* Right Side Action Group */}
         <div className="flex items-center gap-2.5">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-9 w-9 rounded-full border border-zinc-200 bg-zinc-50 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-all duration-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer shadow-sm active:scale-[0.95]"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
+            {mounted && theme === "dark" ? (
+              <Sun className="h-4.5 w-4.5 text-amber-500 animate-in spin-in-90 duration-300" />
+            ) : (
+              <Moon className="h-4.5 w-4.5 text-indigo-500 dark:text-indigo-400 animate-in spin-in-90 duration-300" />
+            )}
+          </button>
+
+          {/* Profile name */}
           <div
             className="hidden max-w-[160px] truncate text-xs font-medium text-zinc-500 sm:block dark:text-zinc-400"
             title={email ?? undefined}

@@ -42,7 +42,7 @@ export default function LoginButton({ next }: { next: string }) {
       <button
         onClick={handleSignIn}
         disabled={loading}
-        className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+        className="flex h-[52px] w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white text-base font-semibold text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-transparent dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
       >
         <GoogleIcon />
         {loading ? "Redirecting…" : "Continue with Google"}
@@ -58,7 +58,7 @@ export default function LoginButton({ next }: { next: string }) {
 
 function GoogleIcon() {
   return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-5.5 w-5.5" viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z"

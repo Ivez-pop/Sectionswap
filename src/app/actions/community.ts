@@ -99,9 +99,35 @@ export async function deleteCommunityLink(id: number): Promise<ActionResult> {
   if (denied) return denied;
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("community_links")
     .delete()
+    .eq("id", id)
+    .select();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error: "Delete failed. Row not found or blocked by Row Level Security (RLS) policies. Please ensure your user profile has 'is_admin' set to true in the profiles database table.",
+    };
+  }
+
+  revalidate();
+  return { ok: true };
+}
+
+export async function toggleCommunityLinkVisibility(
+  id: number,
+  visible: boolean,
+): Promise<ActionResult> {
+  const denied = await assertAdmin();
+  if (denied) return denied;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("community_links")
+    .update({ visible })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 

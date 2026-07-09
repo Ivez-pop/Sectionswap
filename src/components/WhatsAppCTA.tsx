@@ -22,8 +22,8 @@ export default function WhatsAppCTA({
   if (!activeWhatsAppLink) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 mb-12">
-      <div className="group relative rounded-2xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm transition-all duration-300 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-50/10 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-emerald-500/20 dark:hover:shadow-none overflow-hidden">
+    <div className="w-full max-w-7xl mx-auto px-6 mb-6">
+      <div className="group relative rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 md:p-6 shadow-sm transition-all duration-300 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-50/10 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-emerald-500/20 dark:hover:shadow-none overflow-hidden">
         {/* Subtle decorative background glow */}
         <div className="absolute -right-16 -top-16 -z-10 h-32 w-32 rounded-full bg-emerald-50/30 blur-2xl transition-all duration-500 group-hover:bg-emerald-50/50 dark:bg-emerald-950/5 dark:group-hover:bg-emerald-950/10" />
 

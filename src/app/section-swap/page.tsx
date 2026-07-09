@@ -1,4 +1,3 @@
-import NavbarServer from "@/components/NavbarServer";
 import Hero from "@/components/Hero";
 import Dashboard from "@/components/Dashboard";
 import WhatsAppCTA from "@/components/WhatsAppCTA";
@@ -17,9 +16,7 @@ export default async function SectionSwapPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50/40 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 transition-colors duration-300">
-      <NavbarServer />
-
-      <main className="flex-1 flex flex-col justify-center">
+      <main className="flex-1 flex flex-col justify-start pt-6 md:pt-8">
         <Hero />
         <WhatsAppCTA link={whatsAppCta} />
         <Dashboard sections={sections} myPreferences={myPreferences} />

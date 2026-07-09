@@ -47,8 +47,46 @@ export async function removeSection(id: number): Promise<ActionResult> {
   if (denied) return denied;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("sections").delete().eq("id", id);
+  const { data, error } = await supabase
+    .from("sections")
+    .delete()
+    .eq("id", id)
+    .select();
+
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error: "Delete failed. Row not found or blocked by Row Level Security (RLS) policies. Please ensure your user profile has 'is_admin' set to true in the profiles database table.",
+    };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/section-swap");
+  return { ok: true };
+}
+
+export async function updateSection(
+  id: number,
+  name: string,
+): Promise<ActionResult> {
+  const denied = await assertAdmin();
+  if (denied) return denied;
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: "Section name cannot be empty." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sections")
+    .update({ name: trimmed, sort_order: deriveSortOrder(trimmed) })
+    .eq("id", id);
+
+  if (error) {
+    if (error.code === "23505")
+      return { ok: false, error: "Section already exists." };
+    return { ok: false, error: error.message };
+  }
 
   revalidatePath("/admin");
   revalidatePath("/section-swap");

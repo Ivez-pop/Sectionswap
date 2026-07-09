@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Trash2,
@@ -14,11 +15,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { addSection, removeSection } from "@/app/actions/sections";
+import { addSection, removeSection, updateSection } from "@/app/actions/sections";
 import {
   addCommunityLink,
   updateCommunityLink,
   deleteCommunityLink,
+  toggleCommunityLinkVisibility,
   type CommunityLinkInput,
 } from "@/app/actions/community";
 import type {
@@ -34,14 +36,19 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ sections, links }: AdminPanelProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Section form
+  // Section form state
   const [newSectionName, setNewSectionName] = useState("");
   const [sectionError, setSectionError] = useState("");
   const [sectionSuccess, setSectionSuccess] = useState("");
 
-  // Link modal
+  // Section editing inline state
+  const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+  const [editingSectionName, setEditingSectionName] = useState("");
+
+  // Link modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
   const [formName, setFormName] = useState("");
@@ -52,32 +59,82 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
   const [formDescription, setFormDescription] = useState("");
   const [formError, setFormError] = useState("");
 
+  // Handler to add a new section
   const handleAddSection = (e: React.FormEvent) => {
     e.preventDefault();
     setSectionError("");
     setSectionSuccess("");
     if (!newSectionName.trim()) {
       setSectionError("Section name cannot be empty");
+      toast.error("Section name cannot be empty");
       return;
     }
     const name = newSectionName.trim();
     startTransition(async () => {
-      const result = await addSection(name);
-      if (!result.ok) {
-        setSectionError(result.error ?? "Could not add section.");
-        return;
+      try {
+        const result = await addSection(name);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not add section.";
+          setSectionError(errMsg);
+          toast.error(errMsg);
+          return;
+        }
+        setSectionSuccess(`Section "${name}" added successfully!`);
+        toast.success(`Section "${name}" added successfully`);
+        setNewSectionName("");
+        router.refresh();
+        setTimeout(() => setSectionSuccess(""), 3000);
+      } catch (err: any) {
+        console.error("Add section failed:", err);
+        const errMsg = err?.message || "An unexpected error occurred.";
+        setSectionError(errMsg);
+        toast.error(errMsg);
       }
-      setSectionSuccess(`Section "${name}" added successfully!`);
-      setNewSectionName("");
-      setTimeout(() => setSectionSuccess(""), 3000);
     });
   };
 
+  // Handler to remove an existing section
   const handleRemoveSection = (id: number, name: string) => {
     startTransition(async () => {
-      const result = await removeSection(id);
-      if (!result.ok) toast.error(result.error ?? "Could not remove section.");
-      else toast.success(`Removed ${name}`);
+      try {
+        const result = await removeSection(id);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not remove section.";
+          toast.error(errMsg);
+        } else {
+          toast.success("Section deleted.");
+          router.refresh();
+        }
+      } catch (err: any) {
+        console.error("Remove section failed:", err);
+        toast.error(err?.message || "An unexpected error occurred.");
+      }
+    });
+  };
+
+  // Handler to update/rename a section inline
+  const handleUpdateSection = (id: number) => {
+    if (!editingSectionName.trim()) {
+      toast.error("Section name cannot be empty");
+      return;
+    }
+    const name = editingSectionName.trim();
+    startTransition(async () => {
+      try {
+        const result = await updateSection(id, name);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not rename section.";
+          toast.error(errMsg);
+        } else {
+          toast.success(`Renamed section to "${name}"`);
+          setEditingSectionId(null);
+          setEditingSectionName("");
+          router.refresh();
+        }
+      } catch (err: any) {
+        console.error("Update section failed:", err);
+        toast.error(err?.message || "An unexpected error occurred.");
+      }
     });
   };
 
@@ -108,9 +165,21 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
     setEditingLinkId(null);
   };
 
+  // Handler to save (create or update) a community link
   const handleSaveLink = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
+
+    if (!formName.trim()) {
+      setFormError("Community name is required");
+      toast.error("Community name is required");
+      return;
+    }
+    if (!formUrl.trim()) {
+      setFormError("Invite link URL is required");
+      toast.error("Invite link URL is required");
+      return;
+    }
 
     const input: CommunityLinkInput = {
       name: formName,
@@ -122,24 +191,67 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
     };
 
     startTransition(async () => {
-      const result =
-        editingLinkId !== null
-          ? await updateCommunityLink(editingLinkId, input)
-          : await addCommunityLink(input);
-      if (!result.ok) {
-        setFormError(result.error ?? "Could not save link.");
-        return;
+      try {
+        const result =
+          editingLinkId !== null
+            ? await updateCommunityLink(editingLinkId, input)
+            : await addCommunityLink(input);
+        
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not save link.";
+          setFormError(errMsg);
+          toast.error(errMsg);
+          return;
+        }
+        
+        toast.success(editingLinkId !== null ? "Link updated successfully" : "Link added successfully");
+        closeLinkModal();
+        router.refresh();
+      } catch (err: any) {
+        console.error("Save link failed:", err);
+        const errMsg = err?.message || "An unexpected error occurred.";
+        setFormError(errMsg);
+        toast.error(errMsg);
       }
-      toast.success(editingLinkId !== null ? "Link updated" : "Link added");
-      closeLinkModal();
     });
   };
 
+  // Handler to delete a community link
   const handleDeleteLink = (id: number) => {
     startTransition(async () => {
-      const result = await deleteCommunityLink(id);
-      if (!result.ok) toast.error(result.error ?? "Could not delete link.");
-      else toast.success("Link deleted");
+      try {
+        const result = await deleteCommunityLink(id);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not delete link.";
+          toast.error(errMsg);
+        } else {
+          toast.success("Community link deleted.");
+          router.refresh();
+        }
+      } catch (err: any) {
+        console.error("Delete link failed:", err);
+        toast.error(err?.message || "An unexpected error occurred.");
+      }
+    });
+  };
+
+  // Handler to toggle community link visibility directly from the table
+  const handleToggleLinkVisibility = (id: number, currentVisible: boolean) => {
+    const nextVisible = !currentVisible;
+    startTransition(async () => {
+      try {
+        const result = await toggleCommunityLinkVisibility(id, nextVisible);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not update visibility.";
+          toast.error(errMsg);
+        } else {
+          toast.success(nextVisible ? "Link is now visible" : "Link is now hidden");
+          router.refresh();
+        }
+      } catch (err: any) {
+        console.error("Toggle visibility failed:", err);
+        toast.error(err?.message || "An unexpected error occurred.");
+      }
     });
   };
 
@@ -165,7 +277,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
             </h2>
           </div>
           <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-6">
-            Create new sections or clean up legacy ones. Updates reflect on the
+            Create, update, or remove student sections. Updates reflect on the
             student section grid immediately.
           </p>
 
@@ -180,6 +292,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                   value={newSectionName}
                   onChange={(e) => setNewSectionName(e.target.value)}
                   placeholder="e.g. CSE 50"
+                  disabled={isPending}
                   className="flex-1 h-9 px-3 rounded-lg border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
                 />
                 <Button
@@ -194,13 +307,13 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
             </div>
 
             {sectionError && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+              <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 animate-in fade-in duration-200">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>{sectionError}</span>
               </div>
             )}
             {sectionSuccess && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-200">
                 <Check className="h-3.5 w-3.5 shrink-0" />
                 <span>{sectionSuccess}</span>
               </div>
@@ -227,19 +340,67 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                   {sections.map((section) => (
                     <div
                       key={section.id}
-                      className="flex items-center justify-between bg-white border border-zinc-200/80 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-800 shadow-sm dark:bg-zinc-950 dark:border-zinc-900 dark:text-zinc-300 transition-colors"
+                      className="flex items-center justify-between bg-white border border-zinc-200/80 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-800 shadow-sm dark:bg-zinc-950 dark:border-zinc-900 dark:text-zinc-300 transition-colors gap-2"
                     >
-                      <span>{section.name}</span>
-                      <button
-                        onClick={() =>
-                          handleRemoveSection(section.id, section.name)
-                        }
-                        disabled={isPending}
-                        className="p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
-                        title={`Remove ${section.name}`}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      {editingSectionId === section.id ? (
+                        <div className="flex items-center gap-1.5 w-full">
+                          <input
+                            type="text"
+                            value={editingSectionName}
+                            onChange={(e) => setEditingSectionName(e.target.value)}
+                            className="flex-1 h-7 px-2 rounded border border-zinc-200 bg-white text-[11px] text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+                            placeholder="Rename..."
+                            disabled={isPending}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleUpdateSection(section.id)}
+                            disabled={isPending}
+                            className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all cursor-pointer disabled:opacity-50"
+                            title="Save rename"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingSectionId(null);
+                              setEditingSectionName("");
+                            }}
+                            disabled={isPending}
+                            className="p-1 rounded text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
+                            title="Cancel rename"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="truncate">{section.name}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditingSectionId(section.id);
+                                setEditingSectionName(section.name);
+                              }}
+                              disabled={isPending}
+                              className="p-1 rounded text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
+                              title={`Rename ${section.name}`}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleRemoveSection(section.id, section.name)
+                              }
+                              disabled={isPending}
+                              className="p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
+                              title={`Remove ${section.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -292,10 +453,10 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                       key={link.id}
                       className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10 transition-colors"
                     >
-                      <td className="px-4 py-3.5 text-xs font-semibold text-zinc-900 dark:text-zinc-200">
+                      <td className="px-4 py-3.5 text-xs font-semibold text-zinc-900 dark:text-zinc-200 border-b-0">
                         {link.name}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 border-b-0">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                             link.platform === "WhatsApp"
@@ -306,7 +467,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                           {link.platform}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 border-b-0">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                             link.category === "Section Swap"
@@ -317,7 +478,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                           {link.category}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate">
+                      <td className="px-4 py-3.5 text-xs text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate border-b-0">
                         <a
                           href={link.url}
                           target="_blank"
@@ -328,22 +489,30 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                           <ExternalLink className="h-3 w-3 shrink-0" />
                         </a>
                       </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span
-                          className={`inline-flex items-center text-xs font-bold ${
-                            link.visible
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-zinc-400 dark:text-zinc-600"
-                          }`}
+                      <td className="px-4 py-3.5 text-center border-b-0">
+                        <button
+                          onClick={() => handleToggleLinkVisibility(link.id, link.visible)}
+                          disabled={isPending}
+                          className="inline-flex items-center text-xs font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer bg-transparent border-0 disabled:opacity-50"
+                          title={`Toggle visibility to ${link.visible ? "hidden" : "visible"}`}
                         >
-                          {link.visible ? "Yes" : "No"}
-                        </span>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full border ${
+                              link.visible
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
+                                : "bg-zinc-50 border-zinc-100 text-zinc-500 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-400"
+                            }`}
+                          >
+                            {link.visible ? "Visible" : "Hidden"}
+                          </span>
+                        </button>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 text-right border-b-0">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openLinkModal(link)}
-                            className="p-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-900 transition-colors text-zinc-500 cursor-pointer"
+                            disabled={isPending}
+                            className="p-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-900 transition-colors text-zinc-500 cursor-pointer disabled:opacity-50"
                             title="Edit link"
                           >
                             <Edit className="h-3.5 w-3.5" />
@@ -367,7 +536,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Add / Edit Link Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm transition-opacity duration-300">
           <div className="absolute inset-0" onClick={closeLinkModal} />
@@ -390,7 +559,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
             </div>
 
             {formError && (
-              <div className="flex items-center gap-1.5 py-2 px-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400">
+              <div className="flex items-center gap-1.5 py-2 px-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400 animate-in fade-in duration-200">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{formError}</span>
               </div>
@@ -404,7 +573,11 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                 <input
                   type="text"
                   value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  onChange={(e) => {
+                    setFormName(e.target.value);
+                    if (formError) setFormError("");
+                  }}
+                  disabled={isPending}
                   placeholder="e.g. KIIT Hub Discord Community"
                   className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
                 />
@@ -418,6 +591,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                   <select
                     value={formPlatform}
                     onChange={(e) => setFormPlatform(e.target.value as Platform)}
+                    disabled={isPending}
                     className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
                   >
                     <option value="WhatsApp">WhatsApp</option>
@@ -431,9 +605,8 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                   </label>
                   <select
                     value={formCategory}
-                    onChange={(e) =>
-                      setFormCategory(e.target.value as LinkCategory)
-                    }
+                    onChange={(e) => setFormCategory(e.target.value as LinkCategory)}
+                    disabled={isPending}
                     className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
                   >
                     <option value="General">General</option>
@@ -452,6 +625,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                       type="checkbox"
                       checked={formVisible}
                       onChange={(e) => setFormVisible(e.target.checked)}
+                      disabled={isPending}
                       className="sr-only peer"
                     />
                     <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-blue-600" />
@@ -469,7 +643,11 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                 <input
                   type="text"
                   value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
+                  onChange={(e) => {
+                    setFormUrl(e.target.value);
+                    if (formError) setFormError("");
+                  }}
+                  disabled={isPending}
                   placeholder="https://chat.whatsapp.com/... or https://discord.gg/..."
                   className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200"
                 />
@@ -482,6 +660,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
+                  disabled={isPending}
                   placeholder="A short description of this community..."
                   className="w-full h-20 p-3 rounded-xl border border-zinc-200 bg-white text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition-all duration-200 resize-none"
                 />
@@ -492,16 +671,17 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
               <button
                 type="button"
                 onClick={closeLinkModal}
-                className="h-9 px-4 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-semibold text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 cursor-pointer"
+                disabled={isPending}
+                className="h-9 px-4 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-semibold text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm border-0 cursor-pointer"
+                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm border-0 cursor-pointer flex items-center justify-center"
               >
-                Save Link
+                {isPending ? "Saving..." : "Save Link"}
               </Button>
             </div>
           </form>
