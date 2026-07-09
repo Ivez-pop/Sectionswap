@@ -42,13 +42,13 @@ export default function LoginButton({ next }: { next: string }) {
       <button
         onClick={handleSignIn}
         disabled={loading}
-        className="flex h-[52px] w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white text-base font-semibold text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-transparent dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+        className="flex w-full items-center justify-center gap-[11px] rounded-[13px] border-[1.5px] border-[var(--kh-line2)] bg-[var(--kh-card)] px-[18px] py-3.5 text-[15px] font-semibold text-[var(--kh-ink)] shadow-[0_2px_0_var(--kh-line2)] transition-all hover:-translate-y-px hover:shadow-[0_4px_0_var(--kh-line2)] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
       >
         <GoogleIcon />
         {loading ? "Redirecting…" : "Continue with Google"}
       </button>
       {error && (
-        <p className="mt-3 text-center text-xs font-medium text-red-600 dark:text-red-400">
+        <p className="mt-3 text-center text-xs font-medium text-[var(--kh-need)]">
           {error}
         </p>
       )}
@@ -58,7 +58,7 @@ export default function LoginButton({ next }: { next: string }) {
 
 function GoogleIcon() {
   return (
-    <svg className="h-5.5 w-5.5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z"
