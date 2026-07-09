@@ -4,18 +4,16 @@ import { useState } from "react";
 import SectionGrid from "./SectionGrid";
 import PeopleModal from "./PeopleModal";
 import { Search } from "lucide-react";
+import type { Preference, Section } from "@/lib/data/types";
 
-export default function Dashboard() {
+interface DashboardProps {
+  sections: Section[];
+  myPreferences: Record<number, Preference>;
+}
+
+export default function Dashboard({ sections, myPreferences }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeSectionForModal, setActiveSectionForModal] = useState<string | null>(null);
-
-  const handleViewPeople = (sectionName: string) => {
-    setActiveSectionForModal(sectionName);
-  };
-
-  const handleCloseModal = () => {
-    setActiveSectionForModal(null);
-  };
+  const [activeSection, setActiveSection] = useState<Section | null>(null);
 
   return (
     <section className="w-full max-w-7xl mx-auto px-6 pb-24">
@@ -26,7 +24,8 @@ export default function Dashboard() {
             Available Sections
           </h2>
           <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Browse through 49 sections to view swap preferences or submit yours.
+            Browse through {sections.length} sections to view swap preferences or
+            submit yours.
           </p>
         </div>
 
@@ -43,17 +42,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Grid containing cards */}
       <SectionGrid
+        sections={sections}
+        myPreferences={myPreferences}
         searchQuery={searchQuery}
-        onViewPeople={handleViewPeople}
+        onViewPeople={setActiveSection}
       />
 
-      {/* Shared reusable modal */}
       <PeopleModal
-        isOpen={activeSectionForModal !== null}
-        onClose={handleCloseModal}
-        sectionName={activeSectionForModal || ""}
+        isOpen={activeSection !== null}
+        onClose={() => setActiveSection(null)}
+        section={activeSection}
       />
     </section>
   );

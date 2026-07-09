@@ -1,8 +1,7 @@
-"use client";
-
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import type { CommunityLink } from "@/lib/data/types";
 
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -14,16 +13,12 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-import { useApp } from "@/context/AppContext";
-
-export default function WhatsAppCTA() {
-  const { communityLinks } = useApp();
-
-  // Find the first visible WhatsApp community link that belongs to Section Swap
-  const activeWhatsAppLink = communityLinks.find(
-    (link) => link.platform === "WhatsApp" && link.visible && link.category === "Section Swap"
-  );
-
+export default function WhatsAppCTA({
+  link,
+}: {
+  link: CommunityLink | null;
+}) {
+  const activeWhatsAppLink = link;
   if (!activeWhatsAppLink) return null;
 
   return (
