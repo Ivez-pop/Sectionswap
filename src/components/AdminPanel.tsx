@@ -12,6 +12,8 @@ import {
   Check,
   AlertCircle,
   ExternalLink,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,6 +23,7 @@ import {
   updateCommunityLink,
   deleteCommunityLink,
   toggleCommunityLinkVisibility,
+  reorderCommunityLink,
   type CommunityLinkInput,
 } from "@/app/actions/community";
 import type {
@@ -255,6 +258,25 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
     });
   };
 
+  // Handler to swap display order of community links
+  const handleReorderLink = (id: number, direction: "up" | "down") => {
+    startTransition(async () => {
+      try {
+        const result = await reorderCommunityLink(id, direction);
+        if (!result.ok) {
+          const errMsg = result.error ?? "Could not reorder community link.";
+          toast.error(errMsg);
+        } else {
+          toast.success("Order updated.");
+          router.refresh();
+        }
+      } catch (err: any) {
+        console.error("Reorder link failed:", err);
+        toast.error(err?.message || "An unexpected error occurred.");
+      }
+    });
+  };
+
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 space-y-10">
       {/* Title Header */}
@@ -431,6 +453,7 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-100 bg-zinc-50/50 dark:border-zinc-900 dark:bg-zinc-900/30">
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 w-[100px] text-center">Order</th>
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Name</th>
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Platform</th>
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Category</th>
@@ -442,17 +465,39 @@ export default function AdminPanel({ sections, links }: AdminPanelProps) {
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
                 {links.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-xs text-zinc-400">
+                    <td colSpan={7} className="px-4 py-12 text-center text-xs text-zinc-400">
                       No community links configured. Click &ldquo;Add Community
                       Link&rdquo; to create one.
                     </td>
                   </tr>
                 ) : (
-                  links.map((link) => (
+                  links.map((link, index) => (
                     <tr
                       key={link.id}
                       className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10 transition-colors"
                     >
+                      <td className="px-4 py-3.5 text-center border-b-0 w-[100px]">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleReorderLink(link.id, "up")}
+                            disabled={isPending || index === 0}
+                            className="p-1.5 rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-500 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move Up"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReorderLink(link.id, "down")}
+                            disabled={isPending || index === links.length - 1}
+                            className="p-1.5 rounded-lg border border-zinc-200 bg-white dark:bg-zinc-900 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 transition-colors text-zinc-500 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move Down"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5 text-xs font-semibold text-zinc-900 dark:text-zinc-200 border-b-0">
                         {link.name}
                       </td>

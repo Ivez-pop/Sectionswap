@@ -26,8 +26,8 @@ export async function getCommunityLinks(): Promise<CommunityLink[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("community_links")
-    .select("id, name, platform, url, visible, category, description")
-    .order("id", { ascending: true });
+    .select("id, name, platform, url, visible, category, description, display_order")
+    .order("display_order", { ascending: true });
 
   if (error) throw error;
   return (data as CommunityLink[]) ?? [];
@@ -39,10 +39,10 @@ export async function getVisibleCommunities(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("community_links")
-    .select("id, name, platform, url, visible, category, description")
+    .select("id, name, platform, url, visible, category, description, display_order")
     .eq("visible", true)
     .eq("category", category)
-    .order("id", { ascending: true });
+    .order("display_order", { ascending: true });
 
   if (error) throw error;
   return (data as CommunityLink[]) ?? [];

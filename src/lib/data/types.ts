@@ -24,6 +24,7 @@ export interface CommunityLink {
   visible: boolean;
   category: LinkCategory;
   description: string | null;
+  display_order: number;
 }
 
 export interface Person {
